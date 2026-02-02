@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Delivery polygon</title>
+<title>Delivery polygon with brands</title>
 
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
 
@@ -20,9 +20,9 @@ html, body, #map {
 <div id="map"></div>
 
 <script>
-// -------------------------------
-// Универсальный парсер URL-параметров
-// -------------------------------
+// ----------------------------------------
+// Универсальный JSON-парсер из URL
+// ----------------------------------------
 function getJsonParam(name) {
   const raw = new URLSearchParams(window.location.search).get(name);
   if (!raw) return null;
@@ -30,36 +30,48 @@ function getJsonParam(name) {
   try {
     return JSON.parse(decodeURIComponent(raw));
   } catch (e) {
-    console.error(`Ошибка парсинга параметра ${name}`, e);
+    console.error("Ошибка парсинга параметра:", name, e);
     return null;
   }
 }
 
+// ----------------------------------------
+// Цвета брендов (можно расширять)
+// ----------------------------------------
+const BRAND_COLORS = {
+  "LK": "#E6E6E6",
+  "MF": "#FF8800",
+  "PF": "#9ACD32"
+};
+
+// fallback-цвет
+const DEFAULT_COLOR = "#888888";
+
 ymaps.ready(function () {
 
-  // -------------------------------
-  // Чтение параметров
-  // -------------------------------
+  // ----------------------------------------
+  // Читаем параметры
+  // ----------------------------------------
   const polygonCoords = getJsonParam("coords");   // [[lat,lon],...]
-  const deliveryPoints = getJsonParam("points"); // [[lat,lon],...]
+  const deliveryPoints = getJsonParam("points"); // [[lat,lon,"Brand"],...]
 
-  // -------------------------------
-  // Создание карты
-  // -------------------------------
+  // ----------------------------------------
+  // Инициализация карты
+  // ----------------------------------------
   const map = new ymaps.Map("map", {
-    center: [55.75, 37.61], // fallback
+    center: [55.75, 37.61],
     zoom: 9,
     controls: ["zoomControl"]
   });
 
   let boundsObjects = [];
 
-  // -------------------------------
-  // Рисуем полигон
-  // -------------------------------
+  // ----------------------------------------
+  // Полигон
+  // ----------------------------------------
   if (polygonCoords && polygonCoords.length > 0) {
     const polygon = new ymaps.Polygon(
-      [polygonCoords], // ВАЖНО: массив контуров
+      [polygonCoords],
       {},
       {
         fillColor: "#00FF0055",
@@ -73,25 +85,35 @@ ymaps.ready(function () {
     boundsObjects.push(polygon);
   }
 
-  // -------------------------------
-  // Рисуем точки доставок
-  // -------------------------------
+  // ----------------------------------------
+  // Точки доставок (по брендам)
+  // ----------------------------------------
   if (deliveryPoints && deliveryPoints.length > 0) {
 
-    const pointsCollection = new ymaps.GeoObjectCollection(null, {
-      preset: "islands#redDotIcon",
-      draggable: false
-    });
+    const pointsCollection = new ymaps.GeoObjectCollection();
 
     deliveryPoints.forEach(p => {
-      if (!Array.isArray(p) || p.length !== 2) return;
+      if (!Array.isArray(p) || p.length < 2) return;
+
+      const lat = p[0];
+      const lon = p[1];
+      const brand = p[2] || "Unknown";
+
+      const color = BRAND_COLORS[brand] || DEFAULT_COLOR;
 
       const placemark = new ymaps.Placemark(
-        p,
-        {},
+        [lat, lon],
         {
-          preset: "islands#redDotIcon",
-          iconColor: "#d0021b"
+          hintContent: brand,
+          balloonContent:
+            "<b>Бренд:</b> " + brand +
+            "<br><b>Координаты:</b> " +
+            lat.toFixed(5) + ", " + lon.toFixed(5)
+        },
+        {
+          preset: "islands#circleIcon",
+          iconColor: color,
+          iconCircleRadius: 6
         }
       );
 
@@ -102,9 +124,9 @@ ymaps.ready(function () {
     boundsObjects.push(pointsCollection);
   }
 
-  // -------------------------------
-  // Масштабируем карту по объектам
-  // -------------------------------
+  // ----------------------------------------
+  // Масштабирование карты
+  // ----------------------------------------
   if (boundsObjects.length > 0) {
     const bounds = ymaps.geoQuery(boundsObjects).getBounds();
     if (bounds) {

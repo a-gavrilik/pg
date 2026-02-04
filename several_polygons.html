@@ -2,7 +2,7 @@ const params = new URLSearchParams(window.location.search);
 const polygonsRaw = params.get("polygons");
 
 if (polygonsRaw) {
-  const polygons = JSON.parse(decodeURIComponent(polygonsRaw));
+  const polygons = JSON.parse(polygonsRaw);
 
   polygons.forEach(coords => {
     const polygon = new ymaps.Polygon(

@@ -1,0 +1,21 @@
+const params = new URLSearchParams(window.location.search);
+const polygonsRaw = params.get("polygons");
+
+if (polygonsRaw) {
+  const polygons = JSON.parse(decodeURIComponent(polygonsRaw));
+
+  polygons.forEach(coords => {
+    const polygon = new ymaps.Polygon(
+      [coords],
+      {},
+      {
+        fillColor: '#00FF0055',
+        strokeColor: '#007700',
+        strokeWidth: 2
+      }
+    );
+    map.geoObjects.add(polygon);
+  });
+
+  map.setBounds(map.geoObjects.getBounds());
+}

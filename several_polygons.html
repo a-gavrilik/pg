@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Polygons</title>
+<title>Several Polygons</title>
 
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
 
@@ -20,33 +20,6 @@ html, body, #map {
 <div id="map"></div>
 
 <script>
-function getSinglePolygon() {
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get("coords");
-  if (!raw) return null;
-
-  try {
-    // URLSearchParams уже декодирует
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error("Single polygon parse error", e);
-    return null;
-  }
-}
-
-function getMultiplePolygons() {
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get("polygons");
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error("Multiple polygons parse error", e);
-    return null;
-  }
-}
-
 ymaps.ready(function () {
 
   const map = new ymaps.Map("map", {
@@ -54,52 +27,54 @@ ymaps.ready(function () {
     zoom: 9
   });
 
+  const params = new URLSearchParams(window.location.search);
+  const polygonsRaw = params.get("polygons");
+
+  if (!polygonsRaw) {
+    console.warn("No polygons provided");
+    return;
+  }
+
+  let polygons;
+  try {
+    // ВАЖНО: без decodeURIComponent
+    polygons = JSON.parse(polygonsRaw);
+  } catch (e) {
+    console.error("Polygons parse error", e);
+    return;
+  }
+
+  if (!Array.isArray(polygons)) {
+    console.error("Polygons is not an array");
+    return;
+  }
+
   const geoObjects = [];
 
-  // 1️⃣ Несколько полигонов
-  const polygons = getMultiplePolygons();
-  if (polygons && Array.isArray(polygons)) {
-    polygons.forEach((coords, idx) => {
-      const polygon = new ymaps.Polygon(
-        [coords],
-        {},
-        {
-          fillColor: "#474A5155",
-          strokeColor: "#474A51",
-          strokeWidth: 2
-        }
-      );
-      map.geoObjects.add(polygon);
-      geoObjects.push(polygon);
-    });
-  }
+  polygons.forEach((coords, index) => {
+    if (!Array.isArray(coords)) return;
 
-  // 2️⃣ Один полигон (fallback)
-  if (geoObjects.length === 0) {
-    const coords = getSinglePolygon();
-    if (coords) {
-      const polygon = new ymaps.Polygon(
-        [coords],
-        {},
-        {
-          fillColor: "#474A5155",
-          strokeColor: "#474A51",
-          strokeWidth: 2
-        }
-      );
-      map.geoObjects.add(polygon);
-      geoObjects.push(polygon);
-    }
-  }
+    const polygon = new ymaps.Polygon(
+      coords, // ✅ КРИТИЧНО: НЕ [coords]
+      {},
+      {
+        fillColor: "#474A5155",
+        strokeColor: "#474A51",
+        strokeWidth: 2
+      }
+    );
 
-  // 3️⃣ Авто-зум по всем объектам
+    map.geoObjects.add(polygon);
+    geoObjects.push(polygon);
+  });
+
   if (geoObjects.length > 0) {
     map.setBounds(
       ymaps.geoQuery(geoObjects).getBounds(),
       { checkZoomRange: true }
     );
   } else {
-    console.warn("No polygons provided");
+    console.warn("No valid polygons to render");
   }
 
 });

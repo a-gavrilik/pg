@@ -17,41 +17,51 @@
 <div id="map"></div>
 
 <script>
-ymaps.ready(async function () {
+async function loadPolygons() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("l_ids");
 
+  // если параметра нет — ничего не рисуем
+  if (!raw) return [];
+
+  // важно: decode + split
+  return decodeURIComponent(raw).split(",");
+}
+
+ymaps.ready(async function () {
   const map = new ymaps.Map("map", {
     center: [55.75, 37.61],
-    zoom: 6
+    zoom: 9
   });
 
-  // 1. Загружаем JSON
-  const response = await fetch("polygons.json");
-  const polygons = await response.json();
+  const selectedIds = await loadPolygons();
 
-  // 2. Рисуем полигоны
-  polygons.forEach(p => {
-    if (!p.coords || p.coords.length < 3) return;
+  const resp = await fetch("polygons.json");
+  const allPolygons = await resp.json();
 
+  const filtered =
+    selectedIds.length === 0
+      ? allPolygons
+      : allPolygons.filter(p => selectedIds.includes(p.l_id));
+
+  filtered.forEach(p => {
     const polygon = new ymaps.Polygon(
       [p.coords],
-      {
-        hintContent: p.l_id
-      },
+      {},
       {
         fillColor: "#474A5155",
         strokeColor: "#474A51",
         strokeWidth: 2
       }
     );
-
     map.geoObjects.add(polygon);
   });
 
-  // 3. Масштабируем карту под все полигоны
   if (map.geoObjects.getLength() > 0) {
     map.setBounds(map.geoObjects.getBounds(), { checkZoomRange: true });
   }
 });
 </script>
+
 </body>
 </html>

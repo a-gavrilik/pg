@@ -20,11 +20,7 @@
 async function loadPolygons() {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get("l_ids");
-
-  // если параметра нет — ничего не рисуем
   if (!raw) return [];
-
-  // важно: decode + split
   return decodeURIComponent(raw).split(",");
 }
 
@@ -37,7 +33,8 @@ ymaps.ready(async function () {
   const selectedIds = await loadPolygons();
 
   const resp = await fetch("polygons.json");
-  const allPolygons = await resp.json();
+  const json = await resp.json();
+  const allPolygons = json.polygons; 
 
   const filtered =
     selectedIds.length === 0
